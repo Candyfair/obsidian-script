@@ -1,3 +1,4 @@
+const { PATHS } = require("./config");
 const { parseAllDailyNotes, parseRemindersInbox } = require("./src/parser");
 const { routeItems } = require("./src/router");
 const { runDigest } = require("./src/interactive");
@@ -7,6 +8,7 @@ const {
   rewriteAllSourceFiles,
   writeWishListItems,
   clearRemindersInbox,
+  injectRemindersInDailyNote,
 } = require("./src/writer");
 
 // ---------------------------------------------------------------------------
@@ -30,6 +32,11 @@ async function main() {
 
   console.log("[2/6] Lecture des Rappels iPhone...");
   const remindersItems = parseRemindersInbox();
+
+  const targetFile = injectRemindersInDailyNote(remindersItems, DRY_RUN);
+  if (targetFile) {
+    remindersItems.forEach(item => { item.source = targetFile; });
+  }
 
   // Step 2 — Route items into buckets
   console.log("[3/6] Routage des items...");
@@ -80,14 +87,7 @@ async function main() {
 
   rewriteAllSourceFiles(routed, DRY_RUN);
 
-  const skippedReminders = routed.digest
-  .filter(d => d.fromReminders)
-  .filter(d =>
-    !digestResult.today.some(t => t.item.text === d.item.text) &&
-    !digestResult.soon.some(t => t.item.text === d.item.text)
-  );
-
-  clearRemindersInbox(skippedReminders, DRY_RUN);
+  clearRemindersInbox([], DRY_RUN);
 
   // Step 6 — Summary
   console.log("\n" + "─".repeat(60));

@@ -312,10 +312,137 @@ function clearRemindersInbox(skippedReminders, dryRun) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// REMINDERS INJECTOR
+// ---------------------------------------------------------------------------
+
+/**
+ * Injects reminder items into the most recent daily note under
+ * "### À la maison - autres". Creates the section if absent.
+ * Skips items already present in the file (deduplication by text).
+ *
+ * @param {Array<{ text: string, raw: string, source: string }>} remindersItems
+ * @param {boolean} dryRun
+ */
+function injectRemindersInDailyNote(remindersItems, dryRun) {
+  if (remindersItems.length === 0) return;
+
+  // Find the most recent daily note
+  const files = fs
+    .readdirSync(PATHS.dailyNotes)
+    .filter((f) => /^\d{4}-\d{2}-\d{2}\.md$/.test(f))
+    .sort()
+    .reverse();
+
+  // If today's note doesn't exist, fall back to the most recent one
+  const today = new Date().toISOString().slice(0, 10);
+  const todayFile = `${today}.md`;
+  let targetFile = files.includes(todayFile) ? todayFile : files[0];
+
+  if (!targetFile) {
+    if (dryRun) {
+      console.log(`\n[dry-run] Aucune note quotidienne trouvée — ${todayFile} serait créée.`);
+      return todayFile;  // ← on s'arrête ici en dry-run, le fichier n'existe pas
+    }
+
+    const template = [
+      "### À faire - projets IT",
+      "",
+      "",
+      "### À faire - projets créatifs",
+      "",
+      "",
+      "### À la maison - sur l'ordi",
+      "",
+      "",
+      "### À la maison - autres",
+      "",
+      "",
+      "### Contacter",
+      "",
+      "",
+      "### Voir, Lire, Ecouter",
+      "",
+      "",
+      "### À partager",
+      "",
+      "",
+      "### EN COURS",
+      "",
+      "",
+    ].join("\n");
+
+    fs.writeFileSync(path.join(PATHS.dailyNotes, todayFile), template, "utf-8");
+    console.log(`[writer] Note quotidienne ${todayFile} créée.`);
+    targetFile = todayFile;
+  }
+
+  const filePath = path.join(PATHS.dailyNotes, targetFile);
+  const content = fs.readFileSync(filePath, "utf-8");
+  const lines = content.split("\n");
+
+  // Deduplicate: skip items already present in the file
+  const itemsToInject = remindersItems.filter(
+    (item) => !content.includes(item.text)
+  );
+
+  if (itemsToInject.length === 0) {
+    console.log("[writer] Rappels déjà présents dans la note quotidienne — injection ignorée.");
+    return;
+  }
+
+  const newLines = itemsToInject.map((item) => `- [ ] ${item.text}`);
+
+  // Find the index of "### À la maison - autres"
+  const sectionIndex = lines.findIndex((line) =>
+    line.trim().toLowerCase() === "### à la maison - autres"
+  );
+
+  let updatedLines;
+
+  if (sectionIndex !== -1) {
+    // Insert after the section header, before the next non-empty line or next section
+    let insertAt = sectionIndex + 1;
+    // Skip any existing items in the section
+    while (
+      insertAt < lines.length &&
+      !lines[insertAt].startsWith("###") &&
+      !lines[insertAt].startsWith("##")
+    ) {
+      insertAt++;
+    }
+    updatedLines = [
+      ...lines.slice(0, insertAt),
+      ...newLines,
+      ...lines.slice(insertAt),
+    ];
+  } else {
+    // Section absent — append it at the end of the file
+    updatedLines = [
+      ...lines,
+      "",
+      "### À la maison - autres",
+      ...newLines,
+    ];
+  }
+
+  if (dryRun) {
+    console.log(`\n[dry-run] ${targetFile} — ${itemsToInject.length} rappel(s) qui seraient injectés sous "### À la maison - autres" :`);
+    newLines.forEach((l) => console.log(`  ${l}`));
+    return;
+  }
+
+  fs.writeFileSync(filePath, updatedLines.join("\n"), "utf-8");
+  console.log(`[writer] ${itemsToInject.length} rappel(s) injecté(s) dans ${targetFile}.`);
+
+  return targetFile;
+}
+
 module.exports = {
   commitVault,
   rewriteAllSourceFiles,
   writeTodoFile,
   writeWishListItems,
   clearRemindersInbox,
+  injectRemindersInDailyNote,
 };
