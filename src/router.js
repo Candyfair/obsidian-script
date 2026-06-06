@@ -118,7 +118,7 @@ function routeItems(parsedSections, remindersItems = []) {
   // Reminders inbox items always go to the interactive digest
   for (const item of remindersItems) {
     if (!item.checked) {
-      result.digest.push({ item });
+        result.digest.push({ item, fromReminders: true });
     }
   }
 

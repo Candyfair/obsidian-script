@@ -80,7 +80,14 @@ async function main() {
 
   rewriteAllSourceFiles(routed, DRY_RUN);
 
-  clearRemindersInbox([], DRY_RUN);
+  const skippedReminders = routed.digest
+  .filter(d => d.fromReminders)
+  .filter(d =>
+    !digestResult.today.some(t => t.item.text === d.item.text) &&
+    !digestResult.soon.some(t => t.item.text === d.item.text)
+  );
+
+  clearRemindersInbox(skippedReminders, DRY_RUN);
 
   // Step 6 — Summary
   console.log("\n" + "─".repeat(60));

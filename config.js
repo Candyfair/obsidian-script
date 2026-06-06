@@ -105,7 +105,7 @@ const LABEL_FALLBACK = PATHS.autres;
 // by the digest as an additional source of untriaged items.
 
 const REMINDERS = {
-  inboxExportPath: path.join(VAULT_ROOT, "ressources/reminders-inbox.txt"),
+  inboxExportPath: "/Users/candice/DEV/obsidian-scripts/reminders-inbox.txt",
   listName: "📥 Inbox",
 };
 
