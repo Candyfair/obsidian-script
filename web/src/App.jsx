@@ -98,10 +98,10 @@ export default function App() {
   if (status === "done") {
     return (
       <Centered>
-        <p className="success-text">Digest validé.</p>
+        <h1>Digest validé</h1>
         <ul className="summary-list">
           <li>Aujourd'hui : {commitSummary.today}</li>
-          <li>Bientôt : {commitSummary.soon}</li>
+          <li>Ensuite : {commitSummary.soon}</li>
           <li>Déjà fait : {commitSummary.alreadyDone}</li>
         </ul>
         <p className="success-hint">Ouvre 🏠 Accueil.md dans Obsidian pour retrouver tes tâches.</p>
@@ -114,13 +114,13 @@ export default function App() {
   return (
     <div className="app">
       <header className="app__header">
-        <h1>Digest</h1>
+        <h1>Tasks Digest</h1>
         <div className="counters">
           <span className={counts.today >= MAX_TODAY ? "is-full" : ""}>
             Today {counts.today}/{MAX_TODAY}
           </span>
           <span className={counts.soon >= MAX_SOON ? "is-full" : ""}>
-            Soon {counts.soon}/{MAX_SOON}
+            Next {counts.soon}/{MAX_SOON}
           </span>
           <span>Done {counts.done}</span>
         </div>

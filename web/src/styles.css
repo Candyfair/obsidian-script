@@ -1,14 +1,57 @@
+/* ---------------------------------------------------------------------- */
+/* FONTS — self-hosted, no external network call required                */
+/* ---------------------------------------------------------------------- */
+
+@font-face {
+  font-family: "Space Grotesk";
+  src: url("./fonts/SpaceGrotesk-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Space Grotesk";
+  src: url("./fonts/SpaceGrotesk-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Space Mono";
+  src: url("./fonts/SpaceMono-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Space Mono";
+  src: url("./fonts/SpaceMono-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
+
+/* ---------------------------------------------------------------------- */
+/* DESIGN TOKENS — from Figma export (see "All colors - HEX codes")       */
+/* ---------------------------------------------------------------------- */
+
 :root {
-  --bg: #1c1c1e;
-  --surface: #2c2c2e;
-  --surface-active: #3a3a3c;
-  --text: #f2f2f7;
-  --text-dim: #9b9ba1;
-  --today: #ff9f0a;
-  --soon: #0a84ff;
-  --done: #30d158;
-  --danger: #ff453a;
-  --border-radius: 12px;
+  --color-cream: #faf9f5;        /* page background, selected card bg, icon color */
+  --color-card-bg: #f5f0e8;      /* unselected card background */
+  --color-card-border: #e6dfd8;  /* unselected card border */
+  --color-title: #3d3d3a;        /* title, counters, "Valider" button text */
+  --color-text: #141413;         /* task text */
+  --color-date: #6c6a64;         /* date, "Valider" button border */
+  --color-today: #5db8a6;        /* Today button + selected card border */
+  --color-soon: #5da0b8;         /* Soon button + selected card border */
+  --color-done: #cc785c;         /* Done button + selected card border — fixed, never disabled */
+  --color-disabled: #d5d5d5;     /* Today/Soon button once its limit is reached */
+  --color-cta-bg: #e8a55a;       /* "Valider le digest" button background */
+
+  --font-display: "Space Grotesk", sans-serif;
+  --font-body: "Space Mono", monospace;
+
+  --radius-card: 12px;
+  --radius-btn: 8px;
 }
 
 * {
@@ -21,11 +64,15 @@ html, body, #root {
 }
 
 body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--color-cream);
+  color: var(--color-text);
+  font-family: var(--font-body);
   -webkit-tap-highlight-color: transparent;
 }
+
+/* ---------------------------------------------------------------------- */
+/* LAYOUT                                                                  */
+/* ---------------------------------------------------------------------- */
 
 .app {
   display: flex;
@@ -33,33 +80,41 @@ body {
   min-height: 100%;
   max-width: 640px;
   margin: 0 auto;
-  padding: 1rem 1rem calc(5rem + env(safe-area-inset-bottom)) 1rem;
+  padding: 1.25rem 1rem calc(5rem + env(safe-area-inset-bottom)) 1rem;
 }
 
 .app__header {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  gap: 0.4rem;
+  margin-bottom: 1.25rem;
   padding-top: env(safe-area-inset-top);
 }
 
 .app__header h1 {
-  font-size: 1.5rem;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 32px;
+  color: var(--color-title);
   margin: 0;
 }
 
 .counters {
   display: flex;
-  gap: 0.75rem;
-  font-size: 0.85rem;
-  color: var(--text-dim);
+  gap: 0.9rem;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--color-title);
 }
 
 .counters .is-full {
-  color: var(--today);
-  font-weight: 600;
+  color: var(--color-done);
+  font-weight: 700;
 }
+
+/* ---------------------------------------------------------------------- */
+/* TASK LIST & CARDS                                                      */
+/* ---------------------------------------------------------------------- */
 
 .task-list {
   list-style: none;
@@ -71,61 +126,90 @@ body {
 }
 
 .task-item {
-  background: var(--surface);
-  border-radius: var(--border-radius);
-  padding: 0.85rem;
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-card);
+  padding: 6px 12px;
   display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  border: 1px solid transparent;
-  transition: border-color 0.15s ease;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
-.task-item.is-today { border-color: var(--today); }
-.task-item.is-soon { border-color: var(--soon); }
-.task-item.is-done { border-color: var(--done); opacity: 0.6; }
+/* Selected state: card background returns to page cream, border becomes
+   2px solid in the category colour (per Figma spec) */
+.task-item.is-today { background: var(--color-cream); border: 2px solid var(--color-today); }
+.task-item.is-soon  { background: var(--color-cream); border: 2px solid var(--color-soon); }
+.task-item.is-done  { background: var(--color-cream); border: 2px solid var(--color-done); }
 
 .task-item__text {
+  flex: 1;
+  min-width: 0;
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 0.5rem;
-  font-size: 0.95rem;
-  line-height: 1.35;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 6px 0;
+}
+
+.task-item__text p {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--color-text);
 }
 
 .task-item__date {
-  flex-shrink: 0;
-  font-size: 0.75rem;
-  color: var(--text-dim);
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--color-date);
 }
 
+/* ---------------------------------------------------------------------- */
+/* ASSIGN BUTTONS — stacked vertically, fixed size, centred when the card */
+/* grows taller than the button stack                                    */
+/* ---------------------------------------------------------------------- */
+
 .task-item__actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 0.4rem;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-self: center;
 }
 
 .btn-assign {
   appearance: none;
   border: none;
-  border-radius: 8px;
-  padding: 0.55rem 0;
-  font-size: 0.85rem;
-  font-weight: 600;
-  background: var(--surface-active);
-  color: var(--text-dim);
+  border-radius: var(--radius-btn);
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
+  color: var(--color-cream); /* icon colour — fixed regardless of state */
 }
 
 .btn-assign:disabled {
-  opacity: 0.35;
   cursor: not-allowed;
 }
 
-.btn-assign--today.is-active { background: var(--today); color: #1c1c1e; }
-.btn-assign--soon.is-active { background: var(--soon); color: #1c1c1e; }
-.btn-assign--done.is-active { background: var(--done); color: #1c1c1e; }
+.btn-assign--today { background: var(--color-today); }
+.btn-assign--soon { background: var(--color-soon); }
+.btn-assign--done { background: var(--color-done); } /* fixed — Done never disables */
+
+/* Today/Soon turn grey once their max count is reached, but only on the
+   items that are NOT already assigned (handled via the `disabled` prop) */
+.btn-assign--today:disabled,
+.btn-assign--soon:disabled {
+  background: var(--color-disabled);
+}
+
+/* ---------------------------------------------------------------------- */
+/* VALIDATE BUTTON                                                        */
+/* ---------------------------------------------------------------------- */
 
 .app__footer {
   position: fixed;
@@ -133,7 +217,7 @@ body {
   left: 0;
   right: 0;
   padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom)) 1rem;
-  background: linear-gradient(to top, var(--bg) 60%, transparent);
+  background: linear-gradient(to top, var(--color-cream) 60%, transparent);
 }
 
 .btn-validate {
@@ -142,31 +226,39 @@ body {
   margin: 0 auto;
   display: block;
   padding: 0.9rem;
-  border: none;
-  border-radius: var(--border-radius);
-  background: var(--text);
-  color: var(--bg);
-  font-size: 1rem;
+  border: 1px solid var(--color-date);
+  border-radius: var(--radius-card);
+  background: var(--color-cta-bg);
+  color: var(--color-title);
+  font-family: var(--font-display);
   font-weight: 700;
+  font-size: 1rem;
   cursor: pointer;
 }
 
 .btn-validate:disabled {
-  opacity: 0.5;
+  opacity: 0.6;
   cursor: wait;
 }
 
+/* ---------------------------------------------------------------------- */
+/* EMPTY / ERROR / FINAL STATES                                           */
+/* ---------------------------------------------------------------------- */
+
 .empty-state {
-  color: var(--text-dim);
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--color-date);
   text-align: center;
   margin-top: 3rem;
 }
 
 .error-banner {
-  background: rgba(255, 69, 58, 0.15);
-  color: var(--danger);
+  background: rgba(204, 120, 92, 0.12);
+  color: var(--color-done);
+  font-family: var(--font-body);
   padding: 0.6rem 0.8rem;
-  border-radius: 8px;
+  border-radius: var(--radius-btn);
   font-size: 0.85rem;
   margin-bottom: 1rem;
 }
@@ -178,12 +270,36 @@ body {
   align-items: center;
   justify-content: center;
   text-align: center;
-  gap: 0.5rem;
+  gap: 0.6rem;
   padding: 2rem;
 }
 
-.error-text { color: var(--danger); font-weight: 600; }
-.error-detail { color: var(--text-dim); font-size: 0.85rem; }
-.success-text { color: var(--done); font-weight: 600; font-size: 1.1rem; }
-.summary-list { list-style: none; padding: 0; color: var(--text-dim); }
-.success-hint { color: var(--text-dim); font-size: 0.85rem; max-width: 320px; }
+.centered-screen h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 32px;
+  color: var(--color-title);
+  margin: 0 0 0.5rem 0;
+}
+
+.error-text { color: var(--color-done); font-weight: 700; font-family: var(--font-body); }
+.error-detail { color: var(--color-date); font-size: 14px; font-family: var(--font-body); }
+
+.summary-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0;
+  color: var(--color-title);
+  font-family: var(--font-body);
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.success-hint {
+  color: var(--color-date);
+  font-family: var(--font-body);
+  font-size: 14px;
+  max-width: 320px;
+}

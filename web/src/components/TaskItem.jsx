@@ -1,4 +1,5 @@
 import React from "react";
+import { Check, CheckCheck, X } from "lucide-react";
 
 // Strips the most common markdown markers for cleaner display — mirrors
 // stripMarkdown() in src/interactive.js, kept here since the front never
@@ -24,7 +25,10 @@ function formatSourceDate(filename) {
   return `${parseInt(day, 10)} ${monthNames[parseInt(month, 10) - 1]}`;
 }
 
-const LABELS = { today: "Today", soon: "Soon", done: "Done" };
+// Each category maps to a fixed Lucide icon — icon colour never changes
+// (always --color-cream, both active and inactive), only the button's
+// background colour changes.
+const ICONS = { today: Check, soon: CheckCheck, done: X };
 
 /**
  * @param {{
@@ -40,13 +44,15 @@ export default function TaskItem({ item, assignment, onAssign, disabled }) {
   return (
     <li className={`task-item${assignment ? ` is-${assignment}` : ""}`}>
       <div className="task-item__text">
-        <span>{stripMarkdown(item.text)}</span>
+        <p>{stripMarkdown(item.text)}</p>
         {dateLabel && <span className="task-item__date">{dateLabel}</span>}
       </div>
       <div className="task-item__actions">
         {(["today", "soon", "done"]).map((category) => {
           const isActive = assignment === category;
-          const isDisabled = !isActive && disabled[category];
+          // "done" never gets disabled — there is no maxDone limit
+          const isDisabled = category !== "done" && !isActive && disabled[category];
+          const Icon = ICONS[category];
           return (
             <button
               key={category}
@@ -55,8 +61,9 @@ export default function TaskItem({ item, assignment, onAssign, disabled }) {
               disabled={isDisabled}
               onClick={() => onAssign(category)}
               aria-pressed={isActive}
+              aria-label={category}
             >
-              {LABELS[category]}
+              <Icon size={18} strokeWidth={2.5} />
             </button>
           );
         })}
