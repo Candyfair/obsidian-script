@@ -7,7 +7,7 @@ const CREATIVE_FOLDERS = [
     "01 PROJETS/02 Projets Ecriture",
     "01 PROJETS/03 Projets Dessin",
     "01 PROJETS/04 Projets Crafts",
-    "01 PROJETS/05 Projets E-shop",
+    "01 PROJETS/05 Projet E-shop",
     "04 LOISIRS/02 Détente"
 ];
 
@@ -52,16 +52,28 @@ function formatDate(date) {
  * Reads all markdown files from a folder and returns parsed candidates.
  * A candidate is a project with type "important" and statut !== "Terminé".
  */
+/**
+ * Recursively reads all markdown files from a folder and its subfolders.
+ * Returns parsed candidates with type "important" and statut !== "Terminé".
+ */
 function readCandidatesFromFolder(folderPath) {
     if (!fs.existsSync(folderPath)) return [];
 
-    return fs.readdirSync(folderPath)
-        .filter(f => f.endsWith(".md"))
-        .map(f => {
-            const filePath = path.join(folderPath, f);
+    // Collect all .md files recursively
+    function collectFiles(dir) {
+        return fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
+            const fullPath = path.join(dir, entry.name);
+            if (entry.isDirectory()) return collectFiles(fullPath);
+            if (entry.name.endsWith(".md")) return [fullPath];
+            return [];
+        });
+    }
+
+    return collectFiles(folderPath)
+        .map(filePath => {
             const raw = fs.readFileSync(filePath, "utf8");
             const { data } = matter(raw);
-            return { filePath, fileName: f.replace(".md", ""), frontmatter: data };
+            return { filePath, fileName: path.basename(filePath, ".md"), frontmatter: data };
         })
         .filter(p => {
             const tags = p.frontmatter.tags ?? [];

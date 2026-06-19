@@ -1,4 +1,7 @@
 /node_modules
+/web/node_modules
+
 /logs
 
 reminders-inbox.txt
+
