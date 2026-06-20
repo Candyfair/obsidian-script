@@ -6,6 +6,7 @@ const { writeAccueil, extractFeaturedName } = require("./src/accueil");
 const {
   commitVault,
   rewriteAllSourceFiles,
+  deleteEmptyDailyNotes,
   writeWishListItems,
   clearRemindersInbox,
   injectRemindersInDailyNote,
@@ -86,6 +87,7 @@ async function main() {
   );
 
   rewriteAllSourceFiles(routed, DRY_RUN);
+  deleteEmptyDailyNotes(DRY_RUN);
 
   clearRemindersInbox([], DRY_RUN);
 

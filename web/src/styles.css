@@ -1,0 +1,305 @@
+/* ---------------------------------------------------------------------- */
+/* FONTS — self-hosted, no external network call required                */
+/* ---------------------------------------------------------------------- */
+
+@font-face {
+  font-family: "Space Grotesk";
+  src: url("./fonts/SpaceGrotesk-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Space Grotesk";
+  src: url("./fonts/SpaceGrotesk-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Space Mono";
+  src: url("./fonts/SpaceMono-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Space Mono";
+  src: url("./fonts/SpaceMono-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
+
+/* ---------------------------------------------------------------------- */
+/* DESIGN TOKENS — from Figma export (see "All colors - HEX codes")       */
+/* ---------------------------------------------------------------------- */
+
+:root {
+  --color-cream: #faf9f5;        /* page background, selected card bg, icon color */
+  --color-card-bg: #f5f0e8;      /* unselected card background */
+  --color-card-border: #e6dfd8;  /* unselected card border */
+  --color-title: #3d3d3a;        /* title, counters, "Valider" button text */
+  --color-text: #141413;         /* task text */
+  --color-date: #6c6a64;         /* date, "Valider" button border */
+  --color-today: #5db8a6;        /* Today button + selected card border */
+  --color-soon: #5da0b8;         /* Soon button + selected card border */
+  --color-done: #cc785c;         /* Done button + selected card border — fixed, never disabled */
+  --color-disabled: #d5d5d5;     /* Today/Soon button once its limit is reached */
+  --color-cta-bg: #e8a55a;       /* "Valider le digest" button background */
+
+  --font-display: "Space Grotesk", sans-serif;
+  --font-body: "Space Mono", monospace;
+
+  --radius-card: 12px;
+  --radius-btn: 8px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--color-cream);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ---------------------------------------------------------------------- */
+/* LAYOUT                                                                  */
+/* ---------------------------------------------------------------------- */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 1.25rem 1rem calc(5rem + env(safe-area-inset-bottom)) 1rem;
+}
+
+.app__header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 1.25rem;
+  padding-top: env(safe-area-inset-top);
+}
+
+.app__header h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 32px;
+  color: var(--color-title);
+  margin: 0;
+}
+
+.counters {
+  display: flex;
+  gap: 0.9rem;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--color-title);
+}
+
+.counters .is-full {
+  color: var(--color-done);
+  font-weight: 700;
+}
+
+/* ---------------------------------------------------------------------- */
+/* TASK LIST & CARDS                                                      */
+/* ---------------------------------------------------------------------- */
+
+.task-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.task-item {
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-card);
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+/* Selected state: card background returns to page cream, border becomes
+   2px solid in the category colour (per Figma spec) */
+.task-item.is-today { background: var(--color-cream); border: 2px solid var(--color-today); }
+.task-item.is-soon  { background: var(--color-cream); border: 2px solid var(--color-soon); }
+.task-item.is-done  { background: var(--color-cream); border: 2px solid var(--color-done); }
+
+.task-item__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 6px 0;
+}
+
+.task-item__text p {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--color-text);
+}
+
+.task-item__date {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--color-date);
+}
+
+/* ---------------------------------------------------------------------- */
+/* ASSIGN BUTTONS — stacked vertically, fixed size, centred when the card */
+/* grows taller than the button stack                                    */
+/* ---------------------------------------------------------------------- */
+
+.task-item__actions {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-self: center;
+}
+
+.btn-assign {
+  appearance: none;
+  border: none;
+  border-radius: var(--radius-btn);
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--color-cream); /* icon colour — fixed regardless of state */
+}
+
+.btn-assign:disabled {
+  cursor: not-allowed;
+}
+
+.btn-assign--today { background: var(--color-today); }
+.btn-assign--soon { background: var(--color-soon); }
+.btn-assign--done { background: var(--color-done); } /* fixed — Done never disables */
+
+/* Today/Soon turn grey once their max count is reached, but only on the
+   items that are NOT already assigned (handled via the `disabled` prop) */
+.btn-assign--today:disabled,
+.btn-assign--soon:disabled {
+  background: var(--color-disabled);
+}
+
+/* ---------------------------------------------------------------------- */
+/* VALIDATE BUTTON                                                        */
+/* ---------------------------------------------------------------------- */
+
+.app__footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom)) 1rem;
+  background: linear-gradient(to top, var(--color-cream) 60%, transparent);
+}
+
+.btn-validate {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  display: block;
+  padding: 0.9rem;
+  border: 1px solid var(--color-date);
+  border-radius: var(--radius-card);
+  background: var(--color-cta-bg);
+  color: var(--color-title);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.btn-validate:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/* ---------------------------------------------------------------------- */
+/* EMPTY / ERROR / FINAL STATES                                           */
+/* ---------------------------------------------------------------------- */
+
+.empty-state {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--color-date);
+  text-align: center;
+  margin-top: 3rem;
+}
+
+.error-banner {
+  background: rgba(204, 120, 92, 0.12);
+  color: var(--color-done);
+  font-family: var(--font-body);
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius-btn);
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.centered-screen {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.6rem;
+  padding: 2rem;
+}
+
+.centered-screen h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 32px;
+  color: var(--color-title);
+  margin: 0 0 0.5rem 0;
+}
+
+.error-text { color: var(--color-done); font-weight: 700; font-family: var(--font-body); }
+.error-detail { color: var(--color-date); font-size: 14px; font-family: var(--font-body); }
+
+.summary-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0;
+  color: var(--color-title);
+  font-family: var(--font-body);
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.success-hint {
+  color: var(--color-date);
+  font-family: var(--font-body);
+  font-size: 14px;
+  max-width: 320px;
+}

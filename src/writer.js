@@ -32,6 +32,62 @@ async function commitVault(message) {
 }
 
 // ---------------------------------------------------------------------------
+// "DÉJÀ FAIT" MARKER (web digest only)
+// ---------------------------------------------------------------------------
+
+/**
+ * Rewrites "- [ ] <text>" lines into "- [x] <text>" in their source daily
+ * note, for items marked "Déjà fait" in the web digest.
+ *
+ * Must run BEFORE rewriteAllSourceFiles(), and the caller must merge these
+ * items into routedResult.done afterwards — from that point on they are
+ * cleaned up exactly like any other manually checked item. This mirrors
+ * what would have happened had the user checked the box by hand in
+ * Obsidian, and leaves a trace in the Git history (the line appears
+ * checked in one commit before disappearing in the next) rather than
+ * disappearing in a single irreversible step.
+ *
+ * Matching is done on item.raw (exact original line), mirroring the
+ * matching strategy already used by shouldKeepLine().
+ *
+ * @param {Array<{ item: { text, raw, source } }>} alreadyDoneItems
+ * @param {boolean} dryRun
+ */
+function markItemsAsChecked(alreadyDoneItems, dryRun) {
+  if (alreadyDoneItems.length === 0) return;
+
+  // Group by source file — several items can come from the same note
+  const byFile = new Map();
+  for (const { item } of alreadyDoneItems) {
+    if (item.source === "reminders-inbox.txt") continue; // not applicable
+    if (!byFile.has(item.source)) byFile.set(item.source, []);
+    byFile.get(item.source).push(item);
+  }
+
+  for (const [filename, items] of byFile.entries()) {
+    const filePath = path.join(PATHS.dailyNotes, filename);
+    if (!fs.existsSync(filePath)) continue;
+
+    const content = fs.readFileSync(filePath, "utf-8");
+    let updatedContent = content;
+
+    for (const item of items) {
+      const checkedLine = item.raw.replace(/^- \[ \] /, "- [x] ");
+      updatedContent = updatedContent.replace(item.raw, checkedLine);
+    }
+
+    if (dryRun) {
+      console.log(`\n[dry-run] ${filename} — ${items.length} item(s) qui seraient coché(s) :`);
+      items.forEach((i) => console.log(`  - [x] ${i.text}`));
+      continue;
+    }
+
+    fs.writeFileSync(filePath, updatedContent, "utf-8");
+    console.log(`[writer] ${items.length} item(s) coché(s) dans ${filename} (via "Déjà fait").`);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // SOURCE FILE REWRITER
 // ---------------------------------------------------------------------------
 
@@ -53,6 +109,17 @@ function shouldKeepLine(line, processedRaws) {
 }
 
 /**
+ * Returns true if the file has no meaningful content —
+ * only section headers (lines starting with #) and blank lines.
+ *
+ * @param {string[]} lines
+ * @returns {boolean}
+ */
+function isEmptyNote(lines) {
+  return lines.every(line => line.trim() === "" || line.startsWith("#"));
+}
+
+/**
  * Rewrites a single daily note, removing all processed and checked items.
  * If the resulting file has no remaining unchecked items, it is deleted.
  * In dry-run mode, changes are only printed.
@@ -70,15 +137,15 @@ function rewriteSourceFile(filename, processedRaws, dryRun) {
 
   const keptLines = lines.filter((line) => shouldKeepLine(line, processedRaws));
 
-  // Check whether any unchecked items remain
-  const hasUncheckedItems = keptLines.some((line) =>
-    line.match(/^- \[ \] /)
-  );
+  const hasUncheckedItems = keptLines.some((line) => line.match(/^- \[ \] /));
+  const isEmpty = isEmptyNote(keptLines);
+  const shouldDelete = !hasUncheckedItems || isEmpty;
 
   if (dryRun) {
     console.log(`\n[dry-run] ${filename}`);
-    if (!hasUncheckedItems) {
-      console.log("  → Serait supprimée (plus d'items non cochés)");
+    if (shouldDelete) {
+      const reason = isEmpty ? "note vide (titres et lignes blanches uniquement)" : "plus d'items non cochés";
+      console.log(`  → Serait supprimée (${reason})`);
     } else {
       const removedCount = lines.length - keptLines.length;
       console.log(`  → ${removedCount} ligne(s) retirée(s), fichier conservé`);
@@ -86,7 +153,7 @@ function rewriteSourceFile(filename, processedRaws, dryRun) {
     return;
   }
 
-  if (!hasUncheckedItems) {
+  if (shouldDelete) {
     fs.unlinkSync(filePath);
     console.log(`[writer] ${filename} supprimée.`);
   } else {
@@ -99,9 +166,16 @@ function rewriteSourceFile(filename, processedRaws, dryRun) {
  * Processes all source daily notes.
  * Groups processed items by source file, then rewrites each file once.
  *
- * Only two categories of items are removed from source files:
+ * Two categories of items are removed from source files:
  * - auto-routed items (written to wish lists — no longer needed in sources)
  * - done (checked) items — cleanup only
+ *
+ * Items marked "Déjà fait" in the web digest must be merged into
+ * routedResult.done by the CALLER (see server/api.js) after calling
+ * markItemsAsChecked() — at that point they are functionally identical
+ * to any other checked item, so this function's signature and behaviour
+ * stay unchanged for index.js (CLI flow), which never produces
+ * "Déjà fait" items.
  *
  * Digest items (today/soon/later) and Contacter/EN COURS items are kept in
  * their source notes — Accueil displays them as a view with [[date]] links,
@@ -131,106 +205,30 @@ function rewriteAllSourceFiles(routedResult, dryRun) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// TODO FILE WRITER
-// ---------------------------------------------------------------------------
-
 /**
- * Reads the existing To Do file and extracts unchecked items by section
- * (Bientôt / Plus tard), so they can be merged with new items.
+ * Scans all daily notes and deletes those that contain only
+ * section headers and blank lines (no actionable content).
  *
- * @returns {{ soon: string[], later: string[] }}
- */
-function readExistingTodoItems() {
-  if (!fs.existsSync(PATHS.todo)) return { soon: [], later: [] };
-
-  const content = fs.readFileSync(PATHS.todo, "utf-8");
-  const lines = content.split("\n");
-
-  const result = { soon: [], later: [] };
-  let currentSection = null;
-
-  for (const line of lines) {
-    if (line.trim() === "## 🔜 Bientôt") { currentSection = "soon"; continue; }
-    if (line.trim() === "## 🗓️ Plus tard") { currentSection = "later"; continue; }
-    if (line.startsWith("## ")) { currentSection = null; continue; }
-
-    if (!currentSection) continue;
-
-    // Keep unchecked items only
-    if (line.match(/^- \[ \] /)) {
-      result[currentSection].push(line);
-    }
-  }
-
-  return result;
-}
-
-/**
- * Writes the To Do file with three sections: Bientôt and Plus tard.
- * Merges new items with existing unchecked ones, deduplicating by text.
- *
- * @param {{ soon: Array<{ item }>, later: Array<{ item }> }} digestResult
  * @param {boolean} dryRun
  */
-function writeTodoFile(digestResult, dryRun) {
-  const existing = readExistingTodoItems();
+function deleteEmptyDailyNotes(dryRun) {
+  const files = fs.readdirSync(PATHS.dailyNotes)
+    .filter(f => /^\d{4}-\d{2}-\d{2}\.md$/.test(f));
 
-  // Helper: merge new items with existing lines, deduplicating by text
-  function mergeItems(newItems, existingLines) {
-    const seen = new Set();
-    const result = [];
+  for (const filename of files) {
+    const filePath = path.join(PATHS.dailyNotes, filename);
+    const lines = fs.readFileSync(filePath, "utf-8").split("\n");
 
-    // New items first
-    for (const { item } of newItems) {
-      const key = item.text.trim().toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      result.push(`- [ ] ${item.text}`);
+    if (!isEmptyNote(lines)) continue;
+
+    if (dryRun) {
+      console.log(`[dry-run] ${filename} — serait supprimée (note vide)`);
+      continue;
     }
 
-    // Then preserved existing items not already present
-    for (const line of existingLines) {
-      const text = line.replace(/^- \[ \] /, "").trim().toLowerCase();
-      if (seen.has(text)) continue;
-      seen.add(text);
-      result.push(line);
-    }
-
-    return result;
+    fs.unlinkSync(filePath);
+    console.log(`[writer] ${filename} supprimée (note vide).`);
   }
-
-  const soonLines = mergeItems(digestResult.soon ?? [], existing.soon);
-  const laterLines = mergeItems(digestResult.later ?? [], existing.later);
-
-  const sections = ["# To Do", ""];
-
-  sections.push("## 🔜 Bientôt", "");
-  if (soonLines.length > 0) {
-    sections.push(...soonLines);
-  } else {
-    sections.push("_Aucune tâche pour bientôt._");
-  }
-
-  sections.push("", "## 🗓️ Plus tard", "");
-  if (laterLines.length > 0) {
-    sections.push(...laterLines);
-  } else {
-    sections.push("_Aucune tâche pour plus tard._");
-  }
-
-  const content = sections.join("\n") + "\n";
-
-  if (dryRun) {
-    console.log("\n[dry-run] To Do.md — contenu qui serait écrit :\n");
-    console.log("─".repeat(60));
-    console.log(content);
-    console.log("─".repeat(60) + "\n");
-    return;
-  }
-
-  fs.writeFileSync(PATHS.todo, content, "utf-8");
-  console.log("[writer] To Do.md mis à jour.");
 }
 
 // ---------------------------------------------------------------------------
@@ -440,8 +438,9 @@ function injectRemindersInDailyNote(remindersItems, dryRun) {
 
 module.exports = {
   commitVault,
+  markItemsAsChecked,
   rewriteAllSourceFiles,
-  writeTodoFile,
+  deleteEmptyDailyNotes,
   writeWishListItems,
   clearRemindersInbox,
   injectRemindersInDailyNote,
