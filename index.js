@@ -34,14 +34,14 @@ async function main() {
   console.log("[2/6] Lecture des Rappels iPhone...");
   const remindersItems = parseRemindersInbox();
 
-  const targetFile = injectRemindersInDailyNote(remindersItems, DRY_RUN);
+  const { targetFile, injectedItems } = injectRemindersInDailyNote(remindersItems, DRY_RUN);
   if (targetFile) {
-    remindersItems.forEach(item => { item.source = targetFile; });
+    injectedItems.forEach(item => { item.source = targetFile; });
   }
 
   // Step 2 — Route items into buckets
   console.log("[3/6] Routage des items...");
-  const routed = routeItems(dailySections, remindersItems);
+  const routed = routeItems(dailySections, injectedItems);
 
   const totalAutoRouted = routed.autoRouted.length;
   const totalDigest = routed.digest.length;

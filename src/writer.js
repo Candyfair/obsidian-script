@@ -323,7 +323,7 @@ function clearRemindersInbox(skippedReminders, dryRun) {
  * @param {boolean} dryRun
  */
 function injectRemindersInDailyNote(remindersItems, dryRun) {
-  if (remindersItems.length === 0) return;
+  if (remindersItems.length === 0) return { targetFile: undefined, injectedItems: [] };
 
   // Find the most recent daily note
   const files = fs
@@ -340,7 +340,8 @@ function injectRemindersInDailyNote(remindersItems, dryRun) {
   if (!targetFile) {
     if (dryRun) {
       console.log(`\n[dry-run] Aucune note quotidienne trouvée — ${todayFile} serait créée.`);
-      return todayFile;  // ← on s'arrête ici en dry-run, le fichier n'existe pas
+      // Nothing exists yet, so every item is "new" for preview purposes
+      return { targetFile: todayFile, injectedItems: remindersItems };
     }
 
     const template = [
@@ -386,7 +387,9 @@ function injectRemindersInDailyNote(remindersItems, dryRun) {
 
   if (itemsToInject.length === 0) {
     console.log("[writer] Rappels déjà présents dans la note quotidienne — injection ignorée.");
-    return;
+    // Already in the daily note — dailySections will pick them up naturally,
+    // so they must NOT be added again via remindersItems.
+    return { targetFile, injectedItems: [] };
   }
 
   const newLines = itemsToInject.map((item) => `- [ ] ${item.text}`);
@@ -427,13 +430,13 @@ function injectRemindersInDailyNote(remindersItems, dryRun) {
   if (dryRun) {
     console.log(`\n[dry-run] ${targetFile} — ${itemsToInject.length} rappel(s) qui seraient injectés sous "### À la maison - autres" :`);
     newLines.forEach((l) => console.log(`  ${l}`));
-    return;
+    return { targetFile, injectedItems: itemsToInject };
   }
 
   fs.writeFileSync(filePath, updatedLines.join("\n"), "utf-8");
   console.log(`[writer] ${itemsToInject.length} rappel(s) injecté(s) dans ${targetFile}.`);
 
-  return targetFile;
+  return { targetFile, injectedItems: itemsToInject };
 }
 
 module.exports = {

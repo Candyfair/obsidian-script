@@ -37,17 +37,14 @@ app.get("/api/digest", (req, res) => {
     console.log("[GET /api/digest] Lecture des Rappels iPhone...");
     const remindersItems = parseRemindersInbox();
 
-    // Reminders are injected into today's daily note immediately, exactly
-    // as in the CLI flow — this is not part of the "commit" step, since it
-    // only concerns the buffer file, not the digest triage itself.
-    const targetFile = injectRemindersInDailyNote(remindersItems, FORCE_DRY_RUN);
+    const { targetFile, injectedItems } = injectRemindersInDailyNote(remindersItems, FORCE_DRY_RUN);
     if (targetFile) {
-      remindersItems.forEach((item) => {
+      injectedItems.forEach((item) => {
         item.source = targetFile;
       });
     }
 
-    const routed = routeItems(dailySections, remindersItems);
+    const routed = routeItems(dailySections, injectedItems);
 
     console.log(`       → ${routed.autoRouted.length} item(s) routé(s) automatiquement`);
     console.log(`       → ${routed.digest.length} item(s) à trier dans le digest`);
