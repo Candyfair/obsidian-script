@@ -84,11 +84,36 @@ body {
 }
 
 .app__header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
   margin-bottom: 1.25rem;
   padding-top: env(safe-area-inset-top);
+  padding-bottom: 0.75rem;
+  background: var(--color-cream);
+}
+
+/* Shadow sits strictly under the header band (no left/right bleed) and only
+   fades in once the page is scrolled — marks the header/list boundary */
+.app__header::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 10px;
+  transform: translateY(100%);
+  background: linear-gradient(to bottom, rgba(20, 20, 19, 0.16), rgba(20, 20, 19, 0));
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.app__header.is-scrolled::after {
+  opacity: 1;
 }
 
 .app__header h1 {

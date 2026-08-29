@@ -14,6 +14,14 @@ export default function App() {
   // assignments: { [itemIndex]: "today" | "soon" | "done" }
   const [assignments, setAssignments] = useState({});
   const [commitSummary, setCommitSummary] = useState(null);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 0);
+    onScroll(); // sync initial state (e.g. reload while scrolled down)
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
     fetchDigest()
@@ -113,7 +121,7 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="app__header">
+      <header className={"app__header" + (scrolled ? " is-scrolled" : "")}>
         <h1>Tasks Digest</h1>
         <div className="counters">
           <span className={counts.today >= MAX_TODAY ? "is-full" : ""}>
